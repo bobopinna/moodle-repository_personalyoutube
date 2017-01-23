@@ -77,7 +77,7 @@ class repository_personalyoutube extends repository {
         $this->client = get_google_client();
         $this->client->setClientId(get_config('personalyoutube', 'clientid'));
         $this->client->setClientSecret(get_config('personalyoutube', 'secret'));
-        $this->client->setScopes(array(Google_Service_YouTube::YOUTUBE));
+        $this->client->setScopes(array(Google_Service_YouTube::YOUTUBE_READONLY));
         $this->client->setRedirectUri($callbackurl->out(false));
         $this->service = new Google_Service_YouTube($this->client);
 
