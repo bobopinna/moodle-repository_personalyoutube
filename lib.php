@@ -352,7 +352,11 @@ class repository_personalyoutube extends repository {
             }
             $ret['issearchresult'] = true;
             $ret['list'] = $list;
+        } else {
+            $this->logout();
+            return null;
         }
+
         return $ret;
     }
 
