@@ -4,7 +4,7 @@ Moodle repository plugin used to browse personal YouTube channels in order to pu
 
 This plugin take the starting idea from [Justin Hunt's MyTube plugin](https://github.com/justinhunt/moodle-repository_mytube), now outdated by YouTube updates.
 
-The code was taken mashing up [Moodle Google Drive](https://github.com/moodle/moodle/tree/master/repository/googledocs) and [Moodle YouTube](https://github.com/moodle/moodle/tree/master/repository/youtube) repositories for easy maintenance.
+The code is a mash up of [Moodle Google Drive](https://github.com/moodle/moodle/tree/master/repository/googledocs) and [Moodle YouTube](https://github.com/moodle/moodle/tree/master/repository/youtube) repositories for easy maintenance.
 
 Requirements
 ------------
