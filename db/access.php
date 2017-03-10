@@ -17,7 +17,7 @@
 /**
  * Plugin capabilities.
  *
- * @package    repository_personal
+ * @package    repository_personalyoutube
  * @copyright  2017 Roberto Pinna
  * @author     Roberto Pinna
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
