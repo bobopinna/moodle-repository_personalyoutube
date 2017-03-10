@@ -34,7 +34,6 @@ require_once($CFG->libdir . '/google/lib.php');
  * @copyright  2017 Roberto Pinna
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
 class repository_personalyoutube extends repository {
     /** @var int maximum number of thumbs per page */
     const YOUTUBE_THUMBS_PER_PAGE = 27;
@@ -68,6 +67,7 @@ class repository_personalyoutube extends repository {
      * @param int $repositoryid
      * @param object $context
      * @param array $options
+     * @param int $readonly
      */
     public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array(), $readonly = 0) {
         parent::__construct($repositoryid, $context, $options, $readonly = 0);
@@ -174,6 +174,13 @@ class repository_personalyoutube extends repository {
         return false;
     }
 
+    /**
+     * Get video listing
+     *
+     * @param string $path
+     * @param string $page no paging is used in repository_local
+     * @return mixed
+     */
     public function get_listing($path='', $page = '') {
         // Check to ensure that the access token was successfully acquired.
         $channelid = '';
@@ -308,6 +315,7 @@ class repository_personalyoutube extends repository {
     /**
      * Return search results
      * @param string $search_text
+     * @param int $page
      * @return array
      */
     public function search($keyword, $page = 0) {
