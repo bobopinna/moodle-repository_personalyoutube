@@ -314,7 +314,8 @@ class repository_personalyoutube extends repository {
 
     /**
      * Return search results
-     * @param string $search_text
+     *
+     * @param string $keyword The text to search
      * @param int $page
      * @return array
      */
