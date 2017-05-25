@@ -26,9 +26,9 @@ namespace repository_personalyoutube;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Google Drive Rest API.
+ * Personal YouTube Rest API.
  *
- * @copyright  2017 Damyon Wiese
+ * @copyright  2017 Roberto Pinna
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class rest extends \core\oauth2\rest {
