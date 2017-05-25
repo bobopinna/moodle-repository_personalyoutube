@@ -25,10 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/repository/lib.php');
-require_once($CFG->libdir . '/google/lib.php');
 
 /**
- * repository_personalyoutube class
+ * Personal Youtube Plugin
  *
  * @package    repository_personalyoutube
  * @copyright  2017 Roberto Pinna
@@ -39,86 +38,67 @@ class repository_personalyoutube extends repository {
     const YOUTUBE_THUMBS_PER_PAGE = 27;
 
     /**
-     * Google Client.
-     * @var Google_Client
+     * OAuth 2 Client.
+     * @var \core\oauth2\client
      */
     private $client = null;
 
     /**
-     * YouTube Service.
-     * @var Google_Service_YouTube
+     * OAuth 2 Issuer
+     * @var \core\oauth2\issuer
      */
-    private $service = null;
+    private $issuer = null;
 
     /**
-     * Session key to store the accesstoken.
-     * @var string
+     * Additional scopes required for drive.
      */
-    const SESSIONKEY = 'personalyoutube_accesstoken';
-
-    /**
-     * URI to the callback file for OAuth.
-     * @var string
-     */
-    const CALLBACKURL = '/admin/oauth2callback.php';
+    const SCOPES = 'https://www.googleapis.com/auth/youtube';
 
     /**
      * Youtube plugin constructor
+     *
      * @param int $repositoryid
      * @param object $context
      * @param array $options
      * @param int $readonly
+     * @return void
      */
     public function __construct($repositoryid, $context = SYSCONTEXTID, $options = array(), $readonly = 0) {
         parent::__construct($repositoryid, $context, $options, $readonly = 0);
 
-        $callbackurl = new moodle_url(self::CALLBACKURL);
-
-        $this->client = get_google_client();
-        $this->client->setClientId(get_config('personalyoutube', 'clientid'));
-        $this->client->setClientSecret(get_config('personalyoutube', 'secret'));
-        $this->client->setScopes(array(Google_Service_YouTube::YOUTUBE_READONLY));
-        $this->client->setRedirectUri($callbackurl->out(false));
-        $this->service = new Google_Service_YouTube($this->client);
-
-        $this->check_login();
-    }
-
-    /**
-     * Returns the access token if any.
-     *
-     * @return string|null access token.
-     */
-    protected function get_access_token() {
-        global $SESSION;
-
-        if (isset($SESSION->{self::SESSIONKEY})) {
-            return $SESSION->{self::SESSIONKEY};
+        try {
+            $this->issuer = \core\oauth2\api::get_issuer(get_config('personalyoutube', 'issuerid'));
+        } catch (dml_missing_record_exception $e) {
+            $this->disabled = true;
         }
-        return null;
-    }
 
-    /**
-     * Store the access token in the session.
-     *
-     * @param string $token token to store.
-     * @return void
-     */
-    protected function store_access_token($token) {
-        global $SESSION;
-        $SESSION->{self::SESSIONKEY} = $token;
-    }
-
-    /**
-     * Callback method during authentication.
-     *
-     * @return void
-     */
-    public function callback() {
-        if ($code = optional_param('oauth2code', null, PARAM_RAW)) {
-            $this->client->authenticate($code);
-            $this->store_access_token($this->client->getAccessToken());
+        if ($this->issuer && !$this->issuer->get('enabled')) {
+            $this->disabled = true;
         }
+    }
+
+    /**
+     * Get a cached user authenticated oauth client.
+     *
+     * @param moodle_url $overrideurl - Use this url instead of the repo callback.
+     * @return \core\oauth2\client
+     */
+    protected function get_user_oauth_client($overrideurl = false) {
+        if ($this->client) {
+            return $this->client;
+        }
+        if ($overrideurl) {
+            $returnurl = $overrideurl;
+        } else {
+            $returnurl = new moodle_url('/repository/repository_callback.php');
+            $returnurl->param('callback', 'yes');
+            $returnurl->param('repo_id', $this->id);
+            $returnurl->param('sesskey', sesskey());
+        }
+
+        $this->client = \core\oauth2\api::get_user_oauth_client($this->issuer, $returnurl, self::SCOPES);
+
+        return $this->client;
     }
 
     /**
@@ -127,11 +107,8 @@ class repository_personalyoutube extends repository {
      * @return bool true when logged in.
      */
     public function check_login() {
-        if ($token = $this->get_access_token()) {
-            $this->client->setAccessToken($token);
-            return true;
-        }
-        return false;
+        $client = $this->get_user_oauth_client();
+        return $client->is_logged_in();
     }
 
     /**
@@ -140,17 +117,14 @@ class repository_personalyoutube extends repository {
      * @return void|array for ajax.
      */
     public function print_login() {
-        $returnurl = new moodle_url('/repository/repository_callback.php');
-        $returnurl->param('callback', 'yes');
-        $returnurl->param('repo_id', $this->id);
-        $returnurl->param('sesskey', sesskey());
+        $client = $this->get_user_oauth_client();
+        $url = $client->get_login_url();
 
-        $url = new moodle_url($this->client->createAuthUrl());
-        $url->param('state', $returnurl->out_as_local_url(false));
         if ($this->options['ajax']) {
             $popup = new stdClass();
             $popup->type = 'popup';
             $popup->url = $url->out(false);
+
             return array('login' => array($popup));
         } else {
             echo '<a target="_blank" href="'.$url->out(false).'">'.get_string('login', 'repository').'</a>';
@@ -163,8 +137,18 @@ class repository_personalyoutube extends repository {
      * @return string
      */
     public function logout() {
-        $this->store_access_token(null);
+        $client = $this->get_user_oauth_client();
+        $client->log_out();
         return parent::logout();
+    }
+
+    /**
+     * Store the access token.
+     */
+    public function callback() {
+        $client = $this->get_user_oauth_client();
+        // This will upgrade to an access token if we have an authorization code and save the access token in the session.
+        $client->is_logged_in();
     }
 
     /**
@@ -182,63 +166,57 @@ class repository_personalyoutube extends repository {
      * @return mixed
      */
     public function get_listing($path='', $page = '') {
-        // Check to ensure that the access token was successfully acquired.
         $channelid = '';
         $results = array();
 
-        if ($this->client->getAccessToken()) {
-            try {
-                // Call the channels.list method to retrieve information about the
-                // currently authenticated user's channel.
-                $channelsresponse = $this->service->channels->listChannels('contentDetails', array( 'mine' => 'true'));
+        try {
+            $client = $this->get_user_oauth_client();
+            $service = new repository_personalyoutube\rest($client);
 
-                foreach ($channelsresponse['items'] as $channel) {
+            $channelparams = array('part' => 'contentDetails', 'mine' => 'true');
+            $channelsresponse = $this->youtube_decode($service->call('channels', $channelparams));
 
-                    $channelid = $channel['id'];
+            foreach ($channelsresponse->items as $channel) {
 
-                    // Extract the unique playlist ID that identifies the list of videos
-                    // uploaded to the channel, and then call the playlistItems.list method
-                    // to retrieve that list.
-                    $uploadslistid = $channel['contentDetails']['relatedPlaylists']['uploads'];
+                $channelid = $channel->id;
 
-                    $playlistitemsresponse = $this->service->playlistItems->listPlaylistItems('snippet', array(
-                            'playlistId' => $uploadslistid,
-                            'maxResults' => 50
-                    ));
+                // Extract the unique playlist ID that identifies the list of videos
+                // uploaded to the channel, and then call the playlistItems.list method
+                // to retrieve that list.
+                $uploadslistid = $channel->contentDetails->relatedPlaylists->uploads;
 
-                    foreach ($playlistitemsresponse['items'] as $playlistitem) {
-                        $title = $playlistitem->snippet->title;
-                        $source = 'http://www.youtube.com/watch?v=' . $playlistitem->snippet->resourceId->videoId . '#' . $title;
-                        $thumb = $playlistitem->snippet->getThumbnails()->getDefault();
+                $playlistparams = array(
+                        'part' => 'snippet',
+                        'playlistId' => $uploadslistid,
+                        'maxResults' => self::YOUTUBE_THUMBS_PER_PAGE
+                );
+                $playlistitemsresponse = $this->youtube_decode($service->call('playlistItems', $playlistparams));
 
-                        $results[] = array(
-                                'shorttitle' => $title,
-                                'thumbnail_title' => $playlistitem->snippet->description,
-                                'title' => $title.'.mp4', // This is a hack so we accept this file by extension.
-                                'thumbnail' => $thumb->url,
-                                'thumbnail_width' => (int)$thumb->width,
-                                'thumbnail_height' => (int)$thumb->height,
-                                'size' => '',
-                                'date' => '',
-                                'source' => $source,
-                        );
-                    }
+                foreach ($playlistitemsresponse->items as $playlistitem) {
+                    $title = $playlistitem->snippet->title;
+                    $source = 'http://www.youtube.com/watch?v=' . $playlistitem->snippet->resourceId->videoId . '#' . $title;
+                    $thumb = $playlistitem->snippet->thumbnails->default;
+
+                    $results[] = array(
+                            'shorttitle' => $title,
+                            'thumbnail_title' => $playlistitem->snippet->description,
+                            'title' => $title.'.mp4', // This is a hack so we accept this file by extension.
+                            'thumbnail' => $thumb->url,
+                            'thumbnail_width' => (int)$thumb->width,
+                            'thumbnail_height' => (int)$thumb->height,
+                            'size' => '',
+                            'date' => '',
+                            'source' => $source,
+                    );
                 }
-            } catch (Google_Service_Exception $e) {
-                // If we throw the google exception as-is, we may expose the apikey
-                // to end users. The full message in the google exception includes
-                // the apikey param, so we take just the part pertaining to the
-                // actual error.
-                $error = $e->getErrors()[0]['message'];
-                throw new moodle_exception('apierror', 'repository_youtube', '', $error);
-            } catch (Google_Exception $e) {
-                $this->logout();
-                return null;
             }
-
-        } else {
-            $this->logout();
-            return null;
+        } catch (Exception $e) {
+            if ($e->getCode() == 403 && strpos($e->getMessage(), 'Access Not Configured') !== false) {
+                // This is raised when the service YouTube API has not been enabled on Google APIs control panel.
+                throw new repository_exception('servicenotenabled', 'repository_personalyoutube');
+            } else {
+                throw $e;
+            }
         }
 
         $ret = array();
@@ -281,7 +259,7 @@ class repository_personalyoutube extends repository {
      * @return array
      */
     public static function get_type_option_names() {
-        return array('clientid', 'secret', 'pluginname');
+        return array('issuerid');
     }
 
     /**
@@ -291,26 +269,25 @@ class repository_personalyoutube extends repository {
      * @param string $classname repository class name.
      */
     public static function type_config_form($mform, $classname = 'repository') {
+        $url = new moodle_url('/admin/tool/oauth2/issuers.php');
+        $url = $url->out();
 
-        $callbackurl = new moodle_url(self::CALLBACKURL);
-
-        $a = new stdClass;
-        $a->docsurl = get_docs_url('Google_OAuth_2.0_setup');
-        $a->callbackurl = $callbackurl->out(false);
-
-        $mform->addElement('static', null, '', get_string('oauthinfo', 'repository_personalyoutube', $a));
+        $mform->addElement('static', null, '', get_string('oauth2serviceslink', 'repository_personalyoutube', $url));
 
         parent::type_config_form($mform);
-        $mform->addElement('text', 'clientid', get_string('clientid', 'repository_personalyoutube'));
-        $mform->setType('clientid', PARAM_RAW_TRIMMED);
-        $mform->addElement('text', 'secret', get_string('secret', 'repository_personalyoutube'));
-        $mform->setType('secret', PARAM_RAW_TRIMMED);
+        $options = [];
+        $issuers = \core\oauth2\api::get_all_issuers();
+
+        foreach ($issuers as $issuer) {
+            $options[$issuer->get('id')] = s($issuer->get('name'));
+        }
 
         $strrequired = get_string('required');
-        $mform->addRule('clientid', $strrequired, 'required', null, 'client');
-        $mform->addRule('secret', $strrequired, 'required', null, 'client');
-    }
 
+        $mform->addElement('select', 'issuerid', get_string('issuer', 'repository_personalyoutube'), $options);
+        $mform->addHelpButton('issuerid', 'issuer', 'repository_personalyoutube');
+        $mform->addRule('issuerid', $strrequired, 'required', null, 'client');
+    }
 
     /**
      * Return search results
@@ -322,51 +299,74 @@ class repository_personalyoutube extends repository {
     public function search($keyword, $page = 0) {
         $ret  = array();
 
-        // Check to ensure that the access token was successfully acquired.
-        if ($this->client->getAccessToken()) {
+        try {
+            $client = $this->get_user_oauth_client();
+            $service = new repository_personalyoutube\rest($client);
+
             $list = array();
             $error = null;
-            try {
-                $response = $this->service->search->listSearch('snippet', array(
-                    'q' => $keyword,
-                    'maxResults' => self::YOUTUBE_THUMBS_PER_PAGE,
-                    'type' => 'video',
-                    'forMine' => 'true',
-                ));
 
-                foreach ($response['items'] as $result) {
-                    $title = $result->snippet->title;
-                    $source = 'http://www.youtube.com/v/' . $result->id->videoId . '#' . $title;
-                    $thumb = $result->snippet->getThumbnails()->getDefault();
+            $params = array(
+                'part' => 'snippet',
+                'q' => $keyword,
+                'maxResults' => self::YOUTUBE_THUMBS_PER_PAGE,
+                'type' => 'video',
+                'forMine' => 'true',
+            );
+            $response = $this->youtube_decode($service->call('search', $params));
 
-                    $list[] = array(
-                        'shorttitle' => $title,
-                        'thumbnail_title' => $result->snippet->description,
-                        'title' => $title.'.mp4', // This is a hack so we accept this file by extension.
-                        'thumbnail' => $thumb->url,
-                        'thumbnail_width' => (int)$thumb->width,
-                        'thumbnail_height' => (int)$thumb->height,
-                        'size' => '',
-                        'date' => '',
-                        'source' => $source,
-                    );
-                }
-            } catch (Google_Service_Exception $e) {
-                // If we throw the google exception as-is, we may expose the clientid
-                // to end users. The full message in the google exception includes
-                // the clientid param, so we take just the part pertaining to the
-                // actual error.
-                $error = $e->getErrors()[0]['message'];
-                throw new moodle_exception('apierror', 'repository_personalyoutube', '', $error);
+            foreach ($response->items as $result) {
+                $title = $result->snippet->title;
+                $source = 'http://www.youtube.com/v/' . $result->id->videoId . '#' . $title;
+                $thumb = $result->snippet->thumbnails->default;
+
+                $list[] = array(
+                    'shorttitle' => $title,
+                    'thumbnail_title' => $result->snippet->description,
+                    'title' => $title.'.mp4', // This is a hack so we accept this file by extension.
+                    'thumbnail' => $thumb->url,
+                    'thumbnail_width' => (int)$thumb->width,
+                    'thumbnail_height' => (int)$thumb->height,
+                    'size' => '',
+                    'date' => '',
+                    'source' => $source,
+                );
             }
+
             $ret['issearchresult'] = true;
             $ret['list'] = $list;
-        } else {
-            $this->logout();
-            return null;
+        } catch (Exception $e) {
+            if ($e->getCode() == 403 && strpos($e->getMessage(), 'Access Not Configured') !== false) {
+                // This is raised when the service Drive API has not been enabled on Google APIs control panel.
+                throw new repository_exception('servicenotenabled', 'repository_personalyoutube');
+            } else {
+                throw $e;
+            }
         }
 
         return $ret;
     }
 
+    /**
+     * Get YouTube API json response string perform quatas cleaning and return json object
+     *
+     * @param string $jsonstring
+     * @return stdClass JSON object
+     */
+    private function youtube_decode($jsonstring) {
+        return json_decode(preg_replace('/\"etag\": "\\\\"(.*)\\\\""/', '"etag": "$1"', $jsonstring));
+    }
+}
+
+/**
+ * Callback to get the required scopes for system account.
+ *
+ * @param \core\oauth2\issuer $issuer
+ * @return string
+ */
+function repository_personaltube_oauth2_system_scopes(\core\oauth2\issuer $issuer) {
+    if ($issuer->get('id') == get_config('personalyoutube', 'issuerid')) {
+        return 'https://www.googleapis.com/auth/youtube';
+    }
+    return '';
 }

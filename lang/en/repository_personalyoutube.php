@@ -22,13 +22,18 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['clientid'] = 'Client ID';
 $string['configplugin'] = 'Configuration for personal YouTube repository';
-$string['oauthinfo'] = '<p>To use this plugin, you must register your site with Google, as described in the documentation <a href="{$a->docsurl}">Google OAuth 2.0 setup</a>.</p><p>As part of the registration process, you will need to enter the following URL as \'Authorized Redirect URIs\':</p><p>{$a->callbackurl}</p><p>Once registered, you will be provided with a client ID and secret which can be used to configure all Google Services plugins.</p><p>Please also note that you will have to enable the service \'YouTube API\'.</p>';
+$string['issuer'] = 'OAuth 2 service';
+$string['issuer_help'] = 'Select the OAuth 2 service that is configured to talk to the YouTube API. If the service does not exist yet, you will need to create it.';
+$string['servicenotenabled'] = 'Access not configured. Make sure the service \'YouTube API\' is enabled.';
+$string['oauth2serviceslink'] = '<a href="{$a}" title="Link to OAuth 2 services configuration">OAuth 2 services configuration</a>';
 $string['personalyoutube:view'] = 'View personal YouTube repository';
 $string['pluginname_help'] = 'Upload and publish personal YouTube Videos';
 $string['pluginname'] = 'Personal YouTube';
-$string['secret'] = 'Secret';
 $string['uploads'] = 'Uploads';
 $string['search'] = 'Search';
 
+// Deprecated since Moodle 3.3.
+$string['oauthinfo'] = '<p>To use this plugin, you must register your site with Google, as described in the documentation <a href="{$a->docsurl}">Google OAuth 2.0 setup</a>.</p><p>As part of the registration process, you will need to enter the following URL as \'Authorized Redirect URIs\':</p><p>{$a->callbackurl}</p><p>Once registered, you will be provided with a client ID and secret which can be used to configure all Google Services plugins.</p><p>Please also note that you will have to enable the service \'YouTube API\'.</p>';
+$string['clientid'] = 'Client ID';
+$string['secret'] = 'Secret';
