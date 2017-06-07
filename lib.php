@@ -35,7 +35,7 @@ require_once($CFG->dirroot . '/repository/lib.php');
  */
 class repository_personalyoutube extends repository {
     /** @var int maximum number of thumbs per page */
-    const YOUTUBE_THUMBS_PER_PAGE = 27;
+    const PERSONALYOUTUBE_THUMBS_PER_PAGE = 29;
 
     /**
      * OAuth 2 Client.
@@ -152,7 +152,7 @@ class repository_personalyoutube extends repository {
     }
 
     /**
-     * Personale Youtube plugin doesn't support global search
+     * Personal Youtube plugin doesn't support global search
      */
     public function global_search() {
         return false;
@@ -162,12 +162,32 @@ class repository_personalyoutube extends repository {
      * Get video listing
      *
      * @param string $path
-     * @param string $page no paging is used in repository_local
+     * @param string $page
      * @return mixed
      */
     public function get_listing($path='', $page = '') {
+        global $SESSION;
+
+        $ret = array();
+        $ret['page'] = (int)$page;
+        if ($ret['page'] < 1) {
+            $ret['page'] = 1;
+        }
+        $start = ($ret['page'] - 1) * self::PERSONALYOUTUBE_THUMBS_PER_PAGE + 1;
+        $max = self::PERSONALYOUTUBE_THUMBS_PER_PAGE;
+
+        // The new API doesn't use "page" numbers for browsing through results.
+        // It uses a prev and next token in each set that you need to use to
+        // request the next page of results.
+        $sesspagetoken = 'personalyoutube_'.$this->id.'_nextpagetoken';
+        $pagetoken = '';
+        if ($start > 1 && isset($SESSION->{$sesspagetoken})) {
+            $pagetoken = $SESSION->{$sesspagetoken};
+        }
+
         $channelid = '';
         $results = array();
+        $total = 0;
 
         try {
             $client = $this->get_user_oauth_client();
@@ -188,9 +208,19 @@ class repository_personalyoutube extends repository {
                 $playlistparams = array(
                         'part' => 'snippet',
                         'playlistId' => $uploadslistid,
-                        'maxResults' => self::YOUTUBE_THUMBS_PER_PAGE
+                        'pageToken' => $pagetoken,
+                        'maxResults' => self::PERSONALYOUTUBE_THUMBS_PER_PAGE
                 );
                 $playlistitemsresponse = $this->youtube_decode($service->call('playlistItems', $playlistparams));
+                $total += $playlistitemsresponse->pageInfo->totalResults;
+
+                // Track the next page token for the next request (when a user
+                // scrolls down in the file picker for more videos).
+                if (isset($playlistitemsresponse->nextPageToken)) {
+                    $SESSION->{$sesspagetoken} = $playlistitemsresponse->nextPageToken;
+                } else {
+                    $SESSION->{$sesspagetoken} = '';
+                }
 
                 foreach ($playlistitemsresponse->items as $playlistitem) {
                     $title = $playlistitem->snippet->title;
@@ -219,11 +249,13 @@ class repository_personalyoutube extends repository {
             }
         }
 
-        $ret = array();
         $ret['dynload'] = true;
+        $ret['total'] = $total;
         $ret['manage'] = 'https://www.youtube.com/channel/'.$channelid;
         $ret['path'] = array(array('name' => get_string('uploads', 'repository_personalyoutube'), 'path' => '/'));
         $ret['list'] = $results;
+        // If the number of results is smaller than $max, it means we reached the last page.
+        $ret['pages'] = (count($ret['list']) < $max) ? $ret['page'] : -1;
         return $ret;
     }
 
@@ -296,24 +328,84 @@ class repository_personalyoutube extends repository {
      * @param int $page
      * @return array
      */
-    public function search($keyword, $page = 0) {
+    public function search($search_text, $page = 0) {
+        global $SESSION;
+        $sort = optional_param('personalyoutube_sort', '', PARAM_TEXT);
+        $sess_keyword = 'personalyoutube_'.$this->id.'_keyword';
+        $sess_sort = 'personalyoutube_'.$this->id.'_sort';
+
+        // This is the request of another page for the last search, retrieve the cached keyword and sort
+        if ($page && !$search_text && isset($SESSION->{$sess_keyword})) {
+            $search_text = $SESSION->{$sess_keyword};
+        }
+        if ($page && !$sort && isset($SESSION->{$sess_sort})) {
+            $sort = $SESSION->{$sess_sort};
+        }
+        if (!$sort) {
+            $sort = 'relevance'; // default
+        }
+
+        // Save this search in session
+        $SESSION->{$sess_keyword} = $search_text;
+        $SESSION->{$sess_sort} = $sort;
+
+        $this->keyword = $search_text;
         $ret  = array();
+        //$ret['nologin'] = true;
+        $ret['page'] = (int)$page;
+        if ($ret['page'] < 1) {
+            $ret['page'] = 1;
+        }
+        $start = ($ret['page'] - 1) * self::PERSONALYOUTUBE_THUMBS_PER_PAGE + 1;
+        $max = self::PERSONALYOUTUBE_THUMBS_PER_PAGE;
+        $ret['list'] = $this->_get_collection($search_text, $start, $max, $sort);
+        // If the number of results is smaller than $max, it means we reached the last page.
+        $ret['pages'] = (count($ret['list']) < $max) ? $ret['page'] : -1;
+        return $ret;
+    }
+
+    /**
+     * Private method to get youtube search results
+     * @param string $keyword
+     * @param int $start
+     * @param int $max max results
+     * @param string $sort
+     * @throws moodle_exception If the google API returns an error.
+     * @return array
+     */
+    private function _get_collection($keyword, $start, $max, $sort) {
+        global $SESSION;
+
+        // The new API doesn't use "page" numbers for browsing through results.
+        // It uses a prev and next token in each set that you need to use to
+        // request the next page of results.
+        $sesspagetoken = 'personalyoutube_'.$this->id.'_nextpagetoken';
+        $pagetoken = '';
+        if ($start > 1 && isset($SESSION->{$sesspagetoken})) {
+            $pagetoken = $SESSION->{$sesspagetoken};
+        }
+
+        $list = array();
+        $error = null;
 
         try {
             $client = $this->get_user_oauth_client();
             $service = new repository_personalyoutube\rest($client);
 
-            $list = array();
-            $error = null;
-
             $params = array(
                 'part' => 'snippet',
                 'q' => $keyword,
-                'maxResults' => self::YOUTUBE_THUMBS_PER_PAGE,
+                'maxResults' => self::PERSONALYOUTUBE_THUMBS_PER_PAGE,
+                'order' => $sort,
+                'pageToken' => $pagetoken,
                 'type' => 'video',
                 'forMine' => 'true',
             );
             $response = $this->youtube_decode($service->call('search', $params));
+
+            // Track the next page token for the next request (when a user
+            // scrolls down in the file picker for more videos).
+            $SESSION->{$sesspagetoken} = $response->nextPageToken;
 
             foreach ($response->items as $result) {
                 $title = $result->snippet->title;
@@ -332,9 +424,6 @@ class repository_personalyoutube extends repository {
                     'source' => $source,
                 );
             }
-
-            $ret['issearchresult'] = true;
-            $ret['list'] = $list;
         } catch (Exception $e) {
             if ($e->getCode() == 403 && strpos($e->getMessage(), 'Access Not Configured') !== false) {
                 // This is raised when the service Drive API has not been enabled on Google APIs control panel.
@@ -344,7 +433,7 @@ class repository_personalyoutube extends repository {
             }
         }
 
-        return $ret;
+        return $list;
     }
 
     /**
