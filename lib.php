@@ -404,7 +404,11 @@ class repository_personalyoutube extends repository {
 
             // Track the next page token for the next request (when a user
             // scrolls down in the file picker for more videos).
-            $SESSION->{$sesspagetoken} = $response->nextPageToken;
+            if (isset($response->nextPageToken)) {
+                $SESSION->{$sesspagetoken} = $response->nextPageToken;
+            } else {
+                $SESSION->{$sesspagetoken} = '';
+            }
 
             foreach ($response->items as $result) {
                 $title = $result->snippet->title;
