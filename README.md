@@ -35,6 +35,7 @@ Use (URL Resources)
 Use (embed videos in moodle resources or activity)
 --------------------------------------------------
 **Note:** *Moodle administrator must enable Multimedia plugins filter to use embedded videos*
+
 - Add a resource or an activity
 - In any online text editor (Atto or TinyMCE) click on "Add Insert Media" icon (a piece of movie film with small triangle in the middle)
 - In the Moodle File picker choose "Personal YouTube"
