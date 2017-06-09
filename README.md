@@ -9,7 +9,7 @@ The code is a mash up of [Moodle Google Drive](https://github.com/moodle/moodle/
 Requirements
 ------------
 - YouTube API enabled in your Google API console
-- OAuth ClientID and secret for your moodle site as for Google Drive and Picasa repository plugin; see [Google OAuth 2.0 setup](https://docs.moodle.org/en/Google_OAuth_2.0_setup) in Moodle Docs for all details
+- OAuth2 Service for your moodle site as for Google Drive repository plugin; see [OAuth 2 Services](https://docs.moodle.org/en/OAuth_2_services) in Moodle Docs for all details
 
 Installation
 ------------
@@ -18,8 +18,8 @@ Installation
 - Unzip it and remove zip file
 - Log in as administrator to your moodle site
 - Follow online installation procedure
-- Set as Enabled and Visible the Personal YouTube repository in Administration Block -> Site Administration -> Plugins -> Repositories -> Manage repositories
-- Fill Oauth ClientID and secret in configuration page.
+- Set as Enabled and Visible the Personal YouTube repository in Administration Block -&gt; Site Administration -&gt; Plugins -&gt; Repositories -&gt; Manage repositories
+- Choose the Oauth service in configuration page.
 
 Use (URL Resources)
 -------------------
@@ -35,6 +35,7 @@ Use (URL Resources)
 Use (embed videos in moodle resources or activity)
 --------------------------------------------------
 **Note:** *Moodle administrator must enable Multimedia plugins filter to use embedded videos*
+
 - Add a resource or an activity
 - In any online text editor (Atto or TinyMCE) click on "Add Insert Media" icon (a piece of movie film with small triangle in the middle)
 - In the Moodle File picker choose "Personal YouTube"
