@@ -17,8 +17,7 @@
 /**
  * Version details
  *
- * @package    repository
- * @subpackage personalyoutube
+ * @package    repository_personalyoutube
  * @copyright  2017 Roberto Pinna
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
