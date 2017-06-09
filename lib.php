@@ -324,41 +324,40 @@ class repository_personalyoutube extends repository {
     /**
      * Return search results
      *
-     * @param string $keyword The text to search
+     * @param string $searchtext The text to search
      * @param int $page
      * @return array
      */
-    public function search($search_text, $page = 0) {
+    public function search($searchtext, $page = 0) {
         global $SESSION;
         $sort = optional_param('personalyoutube_sort', '', PARAM_TEXT);
-        $sess_keyword = 'personalyoutube_'.$this->id.'_keyword';
-        $sess_sort = 'personalyoutube_'.$this->id.'_sort';
+        $sesskeyword = 'personalyoutube_'.$this->id.'_keyword';
+        $sesssort = 'personalyoutube_'.$this->id.'_sort';
 
-        // This is the request of another page for the last search, retrieve the cached keyword and sort
-        if ($page && !$search_text && isset($SESSION->{$sess_keyword})) {
-            $search_text = $SESSION->{$sess_keyword};
+        // This is the request of another page for the last search, retrieve the cached keyword and sort.
+        if ($page && !$searchtext && isset($SESSION->{$sesskeyword})) {
+            $searchtext = $SESSION->{$sesskeyword};
         }
-        if ($page && !$sort && isset($SESSION->{$sess_sort})) {
-            $sort = $SESSION->{$sess_sort};
+        if ($page && !$sort && isset($SESSION->{$sesssort})) {
+            $sort = $SESSION->{$sesssort};
         }
         if (!$sort) {
-            $sort = 'relevance'; // default
+            $sort = 'relevance'; // Default.
         }
 
-        // Save this search in session
-        $SESSION->{$sess_keyword} = $search_text;
-        $SESSION->{$sess_sort} = $sort;
+        // Save this search in session.
+        $SESSION->{$sesskeyword} = $searchtext;
+        $SESSION->{$sesssort} = $sort;
 
-        $this->keyword = $search_text;
+        $this->keyword = $searchtext;
         $ret  = array();
-        //$ret['nologin'] = true;
         $ret['page'] = (int)$page;
         if ($ret['page'] < 1) {
             $ret['page'] = 1;
         }
         $start = ($ret['page'] - 1) * self::PERSONALYOUTUBE_THUMBS_PER_PAGE + 1;
         $max = self::PERSONALYOUTUBE_THUMBS_PER_PAGE;
-        $ret['list'] = $this->_get_collection($search_text, $start, $max, $sort);
+        $ret['list'] = $this->_get_collection($searchtext, $start, $max, $sort);
         // If the number of results is smaller than $max, it means we reached the last page.
         $ret['pages'] = (count($ret['list']) < $max) ? $ret['page'] : -1;
         return $ret;
