@@ -291,7 +291,7 @@ class repository_personalyoutube extends repository {
      * @return array
      */
     public static function get_type_option_names() {
-        return array('issuerid');
+        return array('issuerid', 'pluginname');
     }
 
     /**
@@ -306,7 +306,7 @@ class repository_personalyoutube extends repository {
 
         $mform->addElement('static', null, '', get_string('oauth2serviceslink', 'repository_personalyoutube', $url));
 
-        parent::type_config_form($mform);
+        parent::type_config_form($mform, $classname);
         $options = [];
         $issuers = \core\oauth2\api::get_all_issuers();
 
