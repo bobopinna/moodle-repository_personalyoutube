@@ -211,18 +211,18 @@ class repository_personalyoutube extends repository {
                         'pageToken' => $pagetoken,
                         'maxResults' => self::PERSONALYOUTUBE_THUMBS_PER_PAGE
                 );
-                $playlistitemsresponse = $this->youtube_decode($service->call('playlistItems', $playlistparams));
-                $total += $playlistitemsresponse->pageInfo->totalResults;
+                $plitemsresponse = $this->youtube_decode($service->call('playlistItems', $playlistparams));
+                $total += $plitemsresponse->pageInfo->totalResults;
 
                 // Track the next page token for the next request (when a user
                 // scrolls down in the file picker for more videos).
-                if (isset($playlistitemsresponse->nextPageToken)) {
-                    $SESSION->{$sesspagetoken} = $playlistitemsresponse->nextPageToken;
+                if (isset($plitemsresponse->nextPageToken)) {
+                    $SESSION->{$sesspagetoken} = $plitemsresponse->nextPageToken;
                 } else {
                     $SESSION->{$sesspagetoken} = '';
                 }
 
-                foreach ($playlistitemsresponse->items as $playlistitem) {
+                foreach ($plitemsresponse->items as $playlistitem) {
                     $title = $playlistitem->snippet->title;
                     $source = 'http://www.youtube.com/watch?v=' . $playlistitem->snippet->resourceId->videoId . '#' . $title;
                     $thumb = $playlistitem->snippet->thumbnails->default;
