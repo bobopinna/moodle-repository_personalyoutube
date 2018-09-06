@@ -385,7 +385,6 @@ class repository_personalyoutube extends repository {
         }
 
         $list = array();
-        $error = null;
 
         try {
             $client = $this->get_user_oauth_client();
