@@ -1,4 +1,4 @@
-Personal YouTube repository
+Personal YouTube repository ![travis-ci build](https://travis-ci.org/bobopinna/moodle-repository_personalyoutube.svg?branch=master)
 ===========================
 Moodle repository plugin used to browse personal YouTube channels in order to publish public, unlisted and private videos.
 
