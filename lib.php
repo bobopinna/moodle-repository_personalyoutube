@@ -52,7 +52,7 @@ class repository_personalyoutube extends repository {
     /**
      * Additional scopes required for drive.
      */
-    const SCOPES = 'https://www.googleapis.com/auth/youtube';
+    const SCOPES = 'https://www.googleapis.com/auth/youtube.readonly';
 
     /**
      * Youtube plugin constructor
