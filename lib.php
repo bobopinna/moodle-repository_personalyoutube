@@ -357,7 +357,7 @@ class repository_personalyoutube extends repository {
         }
         $start = ($ret['page'] - 1) * self::PERSONALYOUTUBE_THUMBS_PER_PAGE + 1;
         $max = self::PERSONALYOUTUBE_THUMBS_PER_PAGE;
-        $ret['list'] = $this->_get_collection($searchtext, $start, $max, $sort);
+        $ret['list'] = $this->get_collection($searchtext, $start, $max, $sort);
         // If the number of results is smaller than $max, it means we reached the last page.
         $ret['pages'] = (count($ret['list']) < $max) ? $ret['page'] : -1;
         return $ret;
@@ -372,7 +372,7 @@ class repository_personalyoutube extends repository {
      * @throws moodle_exception If the google API returns an error.
      * @return array
      */
-    private function _get_collection($keyword, $start, $max, $sort) {
+    private function get_collection($keyword, $start, $max, $sort) {
         global $SESSION;
 
         // The new API doesn't use "page" numbers for browsing through results.

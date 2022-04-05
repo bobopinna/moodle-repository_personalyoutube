@@ -23,8 +23,6 @@
  */
 namespace repository_personalyoutube;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Personal YouTube Rest API.
  *

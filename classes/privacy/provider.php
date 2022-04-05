@@ -29,8 +29,6 @@ use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\context;
 use core_privacy\local\request\contextlist;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Privacy Subsystem for repository_personalyoutube implementing metadata and plugin providers.
  *
