@@ -24,8 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2018051701;        // The current plugin version (Date: YYYYMMDDXX).
+$plugin->version   = 2022041400;        // The current plugin version (Date: YYYYMMDDXX).
 $plugin->requires  = 2017111300;        // Requires Moodle 3.4 version.
 $plugin->component = 'repository_personalyoutube'; // Full name of the plugin (used for diagnostics).
-$plugin->release = '3.5+';
+$plugin->release = '3.5.1';
 $plugin->maturity = MATURITY_STABLE;
